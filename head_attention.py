@@ -21,13 +21,13 @@ class HeadAttention(nn.Module):
         query: torch.Tensor = self.w_q(x)
         value: torch.Tensor = self.w_v(x)
 
-        attention: torch.Tensor = torch.bmm(query, key.transpose(-2, -1)) / math.sqrt(self.head_size)
+        attention: torch.Tensor = query @ key.transpose(-2, -1) / math.sqrt(self.head_size)
 
         attention_masked = attention.masked_fill(self.tril[0:attention.shape[-1], 0:attention.shape[-1]] == 0, float('-inf'))
 
         attention_soft = nn.functional.softmax(attention_masked, dim=-1)
 
-        return torch.bmm(attention_soft, value)
+        return attention_soft @ value
 
 
 class MultiHeadAttention(nn.Module):
@@ -47,6 +47,48 @@ class MultiHeadAttention(nn.Module):
         out = torch.cat([ head.forward(x) for head in self.heads ], dim=2)
 
         return self.dropout(self.out(out))
+
+
+expand_size = 4
+
+class FeedForward(nn.Module):
+    def __init__(self, emb_size: int, dropout: float = 0.1):
+        super().__init__()
+
+        self.linear1 = nn.Linear(emb_size, emb_size * expand_size)
+        self.relu = nn.ReLU()
+        self.linear2 = nn.Linear(emb_size * expand_size, emb_size)
+
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, x: torch.Tensor):
+        return self.dropout(
+            self.linear2(
+                self.relu(
+                    self.linear1(x)
+                )
+            )
+        )
+
+
+class Decoder(nn.Module):
+    def __init__(self, num_heads: int, emb_size: int, head_size: int, max_seq_len: int, dropout: float = 0.1):
+        super().__init__()
+
+        self.multi_head = MultiHeadAttention(num_heads, emb_size, head_size, max_seq_len, dropout)
+
+        self.feed_forward = FeedForward(emb_size, dropout)
+
+        self.norm1 = nn.LayerNorm(emb_size)
+        self.norm2 = nn.LayerNorm(emb_size)
+
+    def forward(self, x: torch.Tensor):
+        out1 = self.norm1(self.multi_head(x) + x)
+
+        return self.norm2(
+            self.feed_forward(out1) + out1
+        )
+
 
 
 

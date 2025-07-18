@@ -3,6 +3,30 @@ import torch
 import torch.nn as nn
 import torch.nn.functional
 
+class TokenEmbeddings(nn.Module):
+    def __init__(self, vocab_size: int, emb_size: int):
+        super().__init__()
+        self.vocab_size: int = vocab_size
+        self.emb_size: int = emb_size
+
+        self.embeddings = nn.Embedding(vocab_size, emb_size)
+
+    def forward(self, x: torch.Tensor):
+        return self.embeddings(x)
+
+
+class PositionalEmbeddings(nn.Module):
+    def __init__(self, max_seq_len: int, emb_size: int):
+        super().__init__()
+        self.max_seq_len: int = max_seq_len
+        self.emb_size: int = emb_size
+
+        self.embeddings = nn.Embedding(max_seq_len, emb_size)
+
+    def forward(self, seq_len: int):
+        return self.embeddings(torch.arange(seq_len))
+
+
 class HeadAttention(nn.Module):
     def __init__(self, emb_size: int, head_size: int, max_seq_len: int):
         super().__init__()
@@ -90,32 +114,54 @@ class Decoder(nn.Module):
         )
 
 
+class GPT(nn.Module):
+    def __init__(self, vocab_size:int, max_seq_len: int, emb_size: int, num_heads: int, head_size: int, num_layers: int, dropout: float = 0.1, device='cpu'):
+        super().__init__()
+
+        self.max_seq_len = max_seq_len
+
+        self.embeddings = TokenEmbeddings(vocab_size, emb_size)
+        self.positional_embeddings = PositionalEmbeddings(max_seq_len, emb_size)
+
+        self.dropout = nn.Dropout(dropout)
+        self.decoders = nn.Sequential(*[ Decoder(num_heads, emb_size, head_size, max_seq_len, dropout) for _ in range(num_layers) ])
+        self.linear = nn.Linear(emb_size, vocab_size)
 
 
-# if __name__ == "__main__":
-#     t = MultiHeadAttention(num_heads=2, emb_size=3, head_size=10, max_seq_len=32)
-#
-#     res = t.forward(
-#         torch.tensor([[[ 1.9269,  1.4873,  0.9007],
-#          [-2.1055,  0.6784, -1.2345],
-#          [-0.0431, -1.6047, -0.7521],
-#          [ 1.6487, -0.3925, -1.4036],
-#          [-0.7279, -0.5594, -0.7688],
-#          [ 0.7624,  1.6423, -0.1596]],
-#
-#         [[-0.4974,  0.4396,  0.3189],
-#          [-0.4245,  0.3057, -0.7746],
-#          [ 0.0349,  0.3211,  1.5736],
-#          [-0.8455, -1.2742,  2.1228],
-#          [-1.2347, -0.4879, -1.4181],
-#          [ 0.8963,  0.0499,  2.2667]]])
-#     )
-#
-#     print(res.shape)
-#
-#     # t = HeadAttention(emb_size=8, head_size=8, max_seq_len=24)
-#     #
-#     # x = torch.ones((1, 12, 8))
-#     #
-#     # t.forward(x)
-#
+    def forward(self, x: torch.Tensor):
+        embs = self.dropout(self.embeddings(x) + self.positional_embeddings(x.shape[-1]))
+
+        decoded = self.decoders(embs)
+
+        return self.linear(decoded)
+
+
+    def generate(self, x: torch.Tensor, max_new_tokens: int):
+        new_tokens = torch.zeros(x.shape[0], max_new_tokens).long()
+
+        for i in range(max_new_tokens):
+            last = torch.cat([ x, new_tokens[:,:i] ], dim=-1)[:, -self.max_seq_len:]
+
+            logits = self.forward(last)
+
+            # probs = nn.functional.softmax(logits[:, -1], dim=-1)
+
+            max, indicies = torch.max(logits[:, -1], -1)
+
+            new_tokens[:, i] = indicies
+
+        return torch.cat([ x, new_tokens ], dim=-1)
+
+
+if __name__ == "__main__":
+    t = GPT(vocab_size=15, num_heads=2, emb_size=3, head_size=10, max_seq_len=40, num_layers=5)
+
+    res = t.generate(
+        torch.tensor([
+            [1, 2, 3],
+            [1, 2, 3]
+        ]),
+        10
+    )
+
+    print(res)

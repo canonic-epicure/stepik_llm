@@ -25,15 +25,15 @@ class PositionalEmbeddings(nn.Module):
         return self.embeddings(torch.arange(seq_len))
 
 
-if __name__ == "__main__":
-    te = TokenEmbeddings(vocab_size=10, emb_size=5)
-
-    te.forward(
-        torch.IntTensor(
-            [
-                [1, 2, 3, 4],
-                [4, 3, 2, 1]
-            ]
-        )
-    )
-
+# if __name__ == "__main__":
+#     te = TokenEmbeddings(vocab_size=10, emb_size=5)
+#
+#     te.forward(
+#         torch.IntTensor(
+#             [
+#                 [1, 2, 3, 4],
+#                 [4, 3, 2, 1]
+#             ]
+#         )
+#     )
+#

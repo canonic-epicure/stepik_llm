@@ -143,7 +143,7 @@ class GPT(nn.Module):
         return self.linear(decoded)
 
 
-    def generate(self, x: torch.Tensor, max_new_tokens: int):
+    def generate(self, x: torch.Tensor, max_new_tokens: int, do_sample: bool, temperature: float = 1.0, top_k: int = None, top_p: float = None):
         new_tokens = torch.zeros(x.shape[0], max_new_tokens).long()
 
         for i in range(max_new_tokens):
@@ -151,11 +151,41 @@ class GPT(nn.Module):
 
             logits = self.forward(last)
 
-            # probs = nn.functional.softmax(logits[:, -1], dim=-1)
+            last_logs = logits[:, -1] / temperature
 
-            max, indicies = torch.max(logits[:, -1], -1)
+            if do_sample == False:
+                probs = nn.functional.softmax(last_logs, dim=-1)
+                max, indicies = torch.max(probs, -1)
+                new_tokens[:, i] = indicies
+            else:
+                if top_k != None:
+                    values, sorted_idx = torch.sort(last_logs, dim=-1, descending=True)
 
-            new_tokens[:, i] = indicies
+                    row_indices = torch.arange(last_logs.shape[0]).unsqueeze(1).expand(-1, last_logs.shape[1] - top_k)
+                    last_logs[ row_indices, sorted_idx[ :, top_k: ] ] = float('-inf')
+
+                if top_p != None:
+                    probs = nn.functional.softmax(last_logs, dim=-1)
+                    values, sorted_idx = torch.sort(probs, dim=-1, descending=True)
+
+                    n, m = last_logs.shape
+                    rows, cols = torch.meshgrid(
+                        torch.arange(n),
+                        torch.arange(m)
+                    )
+
+                    cumsum = torch.cumsum(values, dim=-1)
+
+                    cumsum[ :, 0 ] = 0
+
+                    mask = cumsum >= top_p
+
+                    last_logs[ rows[ mask ], sorted_idx[ mask ] ] = float('-inf')
+
+                probs = nn.functional.softmax(last_logs, dim=-1)
+
+                indicies = torch.multinomial(probs, 1)
+                new_tokens[:, i] = indicies[:,0]
 
         return torch.cat([ x, new_tokens ], dim=-1)
 
@@ -194,7 +224,12 @@ if __name__ == "__main__":
             [1, 2, 3],
             [1, 2, 3]
         ]),
-        10
+        10,
+        True,
+        0.9,
+        None,
+        0.4
+        # False
     )
 
     print(res)

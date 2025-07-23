@@ -36,7 +36,7 @@ class PositionalEmbeddings(nn.Module):
 
 
 class HeadAttention(nn.Module):
-    def __init__(self, emb_size: int, head_size: int, max_seq_len: int):
+    def __init__(self, emb_size: int, head_size: int, max_seq_len: int, device='cpu'):
         super().__init__()
         self.emb_size: int = emb_size
         self.head_size: int = head_size
@@ -46,7 +46,7 @@ class HeadAttention(nn.Module):
         self.w_q = nn.Linear(self.emb_size, self.head_size)
         self.w_v = nn.Linear(self.emb_size, self.head_size)
 
-        self.tril = torch.tril(torch.ones((self.max_seq_len, self.max_seq_len))).to(self.w_k.weight.device)
+        self.tril = torch.tril(torch.ones((self.max_seq_len, self.max_seq_len))).to(device)
 
     def forward(self, x: torch.Tensor):
         key: torch.Tensor = self.w_k(x)
@@ -63,12 +63,12 @@ class HeadAttention(nn.Module):
 
 
 class MultiHeadAttention(nn.Module):
-    def __init__(self, num_heads: int, emb_size: int, head_size: int, max_seq_len: int, dropout: float = 0.1):
+    def __init__(self, num_heads: int, emb_size: int, head_size: int, max_seq_len: int, dropout: float = 0.1, device='cpu'):
         super().__init__()
         self.num_heads: int = num_heads
 
         self.heads = nn.ModuleList([
-            HeadAttention(emb_size, head_size, max_seq_len) for _ in range(num_heads)
+            HeadAttention(emb_size, head_size, max_seq_len, device) for _ in range(num_heads)
         ])
 
         self.out = nn.Linear(head_size * num_heads, emb_size)
@@ -104,10 +104,10 @@ class FeedForward(nn.Module):
 
 
 class Decoder(nn.Module):
-    def __init__(self, num_heads: int, emb_size: int, head_size: int, max_seq_len: int, dropout: float = 0.1):
+    def __init__(self, num_heads: int, emb_size: int, head_size: int, max_seq_len: int, dropout: float = 0.1, device='cpu'):
         super().__init__()
 
-        self.multi_head = MultiHeadAttention(num_heads, emb_size, head_size, max_seq_len, dropout)
+        self.multi_head = MultiHeadAttention(num_heads, emb_size, head_size, max_seq_len, dropout, device)
 
         self.feed_forward = FeedForward(emb_size, dropout)
 
@@ -134,7 +134,7 @@ class GetData(Dataset):
         return len(self.data) - self.seq_len - 1
 
     def __getitem__(self, idx: int):
-        return (torch.tensor(self.data[ idx:idx + self.seq_len ]), torch.tensor(self.data[ idx + 1:idx + 1 + self.seq_len ]))
+        return (torch.tensor(self.data[ idx:idx + self.seq_len ], device=self.device), torch.tensor(self.data[ idx + 1:idx + 1 + self.seq_len ], device=self.device))
 
 
 class GPT(nn.Module):
@@ -154,7 +154,7 @@ class GPT(nn.Module):
         self.positional_embeddings = PositionalEmbeddings(max_seq_len, emb_size)
 
         self.dropout = nn.Dropout(dropout)
-        self.decoders = nn.Sequential(*[ Decoder(num_heads, emb_size, head_size, max_seq_len, dropout) for _ in range(num_layers) ])
+        self.decoders = nn.Sequential(*[ Decoder(num_heads, emb_size, head_size, max_seq_len, dropout, device) for _ in range(num_layers) ])
         self.linear = nn.Linear(emb_size, vocab_size)
 
 
@@ -167,7 +167,7 @@ class GPT(nn.Module):
 
 
     def generate(self, x: torch.Tensor, max_new_tokens: int, do_sample: bool, temperature: float = 1.0, top_k: int = None, top_p: float = None):
-        new_tokens = torch.zeros(x.shape[0], max_new_tokens).long()
+        new_tokens = torch.zeros(x.shape[0], max_new_tokens).long().to(self.device)
 
         for i in range(max_new_tokens):
             last = torch.cat([ x, new_tokens[:,:i] ], dim=-1)[:, -self.max_seq_len:]
@@ -216,34 +216,39 @@ class GPT(nn.Module):
         for e in tqdm.tqdm(range(num_epoch)):
             self.train()
 
+            loss = []
+
             for inputs, targets in train_loader:
                 res = self.forward(inputs)
 
                 res_mod = res.reshape(res.shape[0] * res.shape[1], -1)
                 targets_mod = targets.reshape(targets.shape[0] * targets.shape[1])
 
-                self.train_loss = torch.nn.functional.cross_entropy(res_mod, targets_mod)
-
-                print('train_loss=', torch.mean(self.train_loss))
+                train_loss = torch.nn.functional.cross_entropy(res_mod, targets_mod)
+                loss.append(train_loss)
 
                 optimizer.zero_grad()
-                self.train_loss.backward()
+                train_loss.backward()
                 optimizer.step()
+
+            train_loss = torch.mean(torch.tensor(loss)).item()
 
             self.eval()
 
-            with torch.no_grad():
-                loss = []
+            loss = []
 
+            with torch.no_grad():
                 for inputs, targets in valid_loader:
-                    res_val = self.forward(inputs).reshape(res.shape[0] * res.shape[1], -1)
+                    res = self.forward(inputs)
+
+                    res_val = res.reshape(res.shape[0] * res.shape[1], -1)
                     targets_val = targets.reshape(targets.shape[0] * targets.shape[1])
 
                     valid_loss = torch.nn.functional.cross_entropy(res_val, targets_val)
 
                     loss.append(valid_loss)
 
-            print('valid_loss=', torch.mean(valid_loss))
+            print(f'train_loss={ train_loss } valid_loss={ torch.mean(torch.tensor(loss)).item() }')
 
             self.save(f'./models/model_{e}.pt')
 
@@ -267,10 +272,10 @@ class GPT(nn.Module):
             emb_size=checkpoint['emb_size'],
             num_heads=checkpoint['num_heads'],
             head_size=checkpoint['head_size'],
-            num_layers=checkpoint['num_layers']
+            num_layers=checkpoint['num_layers'],
+            device=device
         )
         model.load_state_dict(checkpoint['model_state_dict'])
-        model.to(device)
         return model
 
 

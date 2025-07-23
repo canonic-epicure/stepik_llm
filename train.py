@@ -11,7 +11,7 @@ import head_attention as mod
 from head_attention import \
     GetData
 
-device = 'cpu'
+device = 'cuda'
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 

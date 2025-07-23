@@ -1,5 +1,11 @@
+import llist
 from typing import List
 import dill
+import re
+import string
+
+punc = re.compile(f"[{re.escape(string.punctuation)}]")
+space = re.compile(f"\s")
 
 class BPE:
     def __init__(self, vocab_size: int):
@@ -31,6 +37,21 @@ class BPE:
 
         self.letter2tokens[letter].append(token)
 
+    def all_tokens(self):
+        return self.token2id.keys()
+
+    def to_token(self, val1, val2):
+        has_punc_1 = punc.search(val1) != None
+        has_punc_2 = punc.search(val2) != None
+
+        if not has_punc_1 and not has_punc_2:
+            has_space_1 = space.search(val1) != None
+            has_space_2 = space.search(val2) != None
+            if not has_space_1 and not has_space_2:
+                return val1 + val2
+
+        return None
+
     def fit(self, text: str):
         symbols = set()
 
@@ -43,33 +64,55 @@ class BPE:
         for s in symbols:
             self.add_token(s)
 
-        sequence = list(text)
+        sequence = llist.dllist(text)
 
-        while len(self.id2token) < self.vocab_size:
+        iter = 0
+
+        while len(self.id2token) < self.vocab_size and sequence.size > 1:
             counts_dict = {}
 
-            for i in range(len(sequence) - 1):
-                token = sequence[i] + sequence[i + 1]
+            el = sequence.first
 
-                if not token in counts_dict:
-                    counts_dict[token] = 0
+            while el != None:
+                if el.next == None:
+                    break
 
-                counts_dict[token] += 1
+                token = self.to_token(el.value, el.next.value)
+
+                if token != None:
+                    if not token in counts_dict:
+                        counts_dict[token] = 0
+
+                    counts_dict[token] += 1
+
+                el = el.next
 
             counts = list(counts_dict.items())
             max_entry = max(counts, key=lambda x: x[1])
 
+            if max_entry[1] == 1:
+                break
+
             self.add_token(max_entry[0])
 
-            i = 0
-            while i < len(sequence) - 1:
-                token = sequence[i] + sequence[i + 1]
+            el = sequence.first
+
+            while el != None:
+                if el.next == None:
+                    break
+
+                token = self.to_token(el.value, el.next.value)
 
                 if token == max_entry[0]:
-                    sequence[i] = max_entry[0]
-                    sequence[ i + 1:i + 2 ] = []
+                    el.value = max_entry[0]
+                    sequence.remove(el.next)
 
-                i += 1
+                el = el.next
+
+            iter += 1
+
+            if iter % 1000 == 0:
+                print(f"Iteration {iter}")
 
         for letter in self.letter2tokens.keys():
             self.letter2tokens[letter].sort(key=len, reverse=True)

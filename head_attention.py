@@ -2,6 +2,10 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional
+from torch.utils.data import \
+    Dataset, \
+    DataLoader
+from typing import List
 
 class TokenEmbeddings(nn.Module):
     def __init__(self, vocab_size: int, emb_size: int):
@@ -114,6 +118,21 @@ class Decoder(nn.Module):
         )
 
 
+class GetData(Dataset):
+    def __init__(self, data: List, seq_len: int, device='cpu'):
+        super().__init__()
+
+        self.data = data
+        self.seq_len = seq_len
+        self.device = device
+
+    def __len__(self):
+        return len(self.data) - self.seq_len - 1
+
+    def __getitem__(self, idx: int):
+        return (torch.tensor(self.data[ idx:idx + self.seq_len ]), torch.tensor(self.data[ idx + 1:idx + 1 + self.seq_len ]))
+
+
 class GPT(nn.Module):
     def __init__(self, vocab_size:int, max_seq_len: int, emb_size: int, num_heads: int, head_size: int, num_layers: int, dropout: float = 0.1, device='cpu'):
         super().__init__()
@@ -169,13 +188,9 @@ class GPT(nn.Module):
                     values, sorted_idx = torch.sort(probs, dim=-1, descending=True)
 
                     n, m = last_logs.shape
-                    rows, cols = torch.meshgrid(
-                        torch.arange(n),
-                        torch.arange(m)
-                    )
+                    rows, cols = torch.meshgrid(torch.arange(n), torch.arange(m) )
 
                     cumsum = torch.cumsum(values, dim=-1)
-
                     cumsum[ :, 0 ] = 0
 
                     mask = cumsum >= top_p
@@ -188,6 +203,45 @@ class GPT(nn.Module):
                 new_tokens[:, i] = indicies[:,0]
 
         return torch.cat([ x, new_tokens ], dim=-1)
+
+    def fit(self, train_loader: DataLoader, valid_loader: DataLoader, num_epoch: int, learning_rate: float):
+        self.to(self.device)
+
+        optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate)
+
+        for e in range(num_epoch):
+            self.train()
+
+            for inputs, targets in train_loader:
+                res = self.forward(inputs)
+
+                res_mod = res.reshape(res.shape[0] * res.shape[1], -1)
+                targets_mod = targets.reshape(targets.shape[0] * targets.shape[1])
+
+                self.train_loss = torch.nn.functional.cross_entropy(res_mod, targets_mod)
+
+                # print(torch.mean(self.train_loss))
+
+                optimizer.zero_grad()
+                self.train_loss.backward()
+                optimizer.step()
+
+                self.eval()
+
+                with torch.no_grad():
+                    loss = []
+
+                    for inputs, targets in valid_loader:
+                        res_val = self.forward(inputs).reshape(res.shape[0] * res.shape[1], -1)
+                        targets_val = targets.reshape(targets.shape[0] * targets.shape[1])
+
+                        valid_loss = torch.nn.functional.cross_entropy(res_val, targets_val)
+
+                        loss.append(valid_loss)
+
+                # print(torch.mean(valid_loss))
+
+            # self.save(f'./models/model_{e}.pt')
 
     def save(self, path):
         torch.save({
@@ -214,6 +268,7 @@ class GPT(nn.Module):
         model.load_state_dict(checkpoint['model_state_dict'])
         model.to(device)
         return model
+
 
 
 if __name__ == "__main__":

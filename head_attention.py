@@ -30,7 +30,9 @@ class PositionalEmbeddings(nn.Module):
         self.embeddings = nn.Embedding(max_seq_len, emb_size)
 
     def forward(self, seq_len: int):
-        return self.embeddings(torch.arange(seq_len))
+        seq = torch.arange(seq_len)
+
+        return self.embeddings(seq.to(self.embeddings.weight.device))
 
 
 class HeadAttention(nn.Module):
@@ -44,7 +46,7 @@ class HeadAttention(nn.Module):
         self.w_q = nn.Linear(self.emb_size, self.head_size)
         self.w_v = nn.Linear(self.emb_size, self.head_size)
 
-        self.tril = torch.tril(torch.ones((self.max_seq_len, self.max_seq_len)))
+        self.tril = torch.tril(torch.ones((self.max_seq_len, self.max_seq_len))).to(self.w_k.weight.device)
 
     def forward(self, x: torch.Tensor):
         key: torch.Tensor = self.w_k(x)
@@ -211,7 +213,7 @@ class GPT(nn.Module):
 
         optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate)
 
-        for e in tqdm(range(num_epoch)):
+        for e in tqdm.tqdm(range(num_epoch)):
             self.train()
 
             for inputs, targets in train_loader:
@@ -228,20 +230,20 @@ class GPT(nn.Module):
                 self.train_loss.backward()
                 optimizer.step()
 
-                self.eval()
+            self.eval()
 
-                with torch.no_grad():
-                    loss = []
+            with torch.no_grad():
+                loss = []
 
-                    for inputs, targets in valid_loader:
-                        res_val = self.forward(inputs).reshape(res.shape[0] * res.shape[1], -1)
-                        targets_val = targets.reshape(targets.shape[0] * targets.shape[1])
+                for inputs, targets in valid_loader:
+                    res_val = self.forward(inputs).reshape(res.shape[0] * res.shape[1], -1)
+                    targets_val = targets.reshape(targets.shape[0] * targets.shape[1])
 
-                        valid_loss = torch.nn.functional.cross_entropy(res_val, targets_val)
+                    valid_loss = torch.nn.functional.cross_entropy(res_val, targets_val)
 
-                        loss.append(valid_loss)
+                    loss.append(valid_loss)
 
-                print('valid_loss=', torch.mean(valid_loss))
+            print('valid_loss=', torch.mean(valid_loss))
 
             self.save(f'./models/model_{e}.pt')
 

@@ -11,11 +11,11 @@ import head_attention as mod
 from head_attention import \
     GetData
 
-device = 'cuda'
+device = 'cpu'
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
-tokenizer = bpe.BPE.load(f'{ current_dir }./tokenizer.data')
+tokenizer = bpe.BPE.load(f'{ current_dir }/tokenizer.data')
 
 with open('input_tokens.data', 'rb') as f:
     input_tokens = dill.load(f)

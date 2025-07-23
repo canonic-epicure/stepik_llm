@@ -7,6 +7,8 @@ from torch.utils.data import \
     DataLoader
 from typing import List
 
+import tqdm
+
 class TokenEmbeddings(nn.Module):
     def __init__(self, vocab_size: int, emb_size: int):
         super().__init__()
@@ -209,7 +211,7 @@ class GPT(nn.Module):
 
         optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate)
 
-        for e in range(num_epoch):
+        for e in tqdm(range(num_epoch)):
             self.train()
 
             for inputs, targets in train_loader:
@@ -220,7 +222,7 @@ class GPT(nn.Module):
 
                 self.train_loss = torch.nn.functional.cross_entropy(res_mod, targets_mod)
 
-                # print(torch.mean(self.train_loss))
+                print('train_loss=', torch.mean(self.train_loss))
 
                 optimizer.zero_grad()
                 self.train_loss.backward()
@@ -239,9 +241,9 @@ class GPT(nn.Module):
 
                         loss.append(valid_loss)
 
-                # print(torch.mean(valid_loss))
+                print('valid_loss=', torch.mean(valid_loss))
 
-            # self.save(f'./models/model_{e}.pt')
+            self.save(f'./models/model_{e}.pt')
 
     def save(self, path):
         torch.save({

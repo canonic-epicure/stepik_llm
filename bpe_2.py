@@ -19,6 +19,7 @@ class BPE:
     def add_token(self, token: str):
         if token in self.token2id:
             print(f"Token {token} already exists")
+            return
 
         if self.id == self.vocab_size:
             print(f"Vocabulary size is {self.vocab_size}, cannot add token {token}")
@@ -55,8 +56,15 @@ class BPE:
     def fit(self, text: str):
         symbols = set()
 
+        # counts_dict = {}
+
         for c in text:
             symbols.add(c)
+
+            # if c not in counts_dict:
+            #     counts_dict[ c ] = 0
+            #
+            # counts_dict[ c ] += 1
 
         symbols = list(symbols)
         symbols.sort()
@@ -68,14 +76,21 @@ class BPE:
 
         iter = 0
 
-        while len(self.id2token) < self.vocab_size and sequence.size > 1:
+        stack = []
+        el = sequence.first
+
+        while el != None:
+            if el.next == None:
+                break
+            stack.append(el)
+            el = el.next
+
+
+        while len(self.id2token) < self.vocab_size and sequence.size > 1 and len(stack) > 0:
             counts_dict = {}
 
-            el = sequence.first
-
-            while el != None:
-                if el.next == None:
-                    break
+            while len(stack) > 0:
+                el = stack.pop()
 
                 token = self.to_token(el.value, el.next.value)
 
@@ -85,17 +100,19 @@ class BPE:
 
                     counts_dict[token] += 1
 
-                el = el.next
-
-            counts = list(counts_dict.items())
-            max_entry = max(counts, key=lambda x: x[1])
-
-            if max_entry[1] == 1:
+            if len(counts_dict) == 0:
                 break
 
-            self.add_token(max_entry[0])
+            max_token, max_count = max(counts_dict.items(), key=lambda x: x[1])
+
+            if max_count == 1:
+                break
+
+            self.add_token(max_token)
 
             el = sequence.first
+
+            combined = False
 
             while el != None:
                 if el.next == None:
@@ -103,11 +120,28 @@ class BPE:
 
                 token = self.to_token(el.value, el.next.value)
 
-                if token == max_entry[0]:
-                    el.value = max_entry[0]
+                if token == max_token:
+                    combined = True
+
+                    # counts_dict[ el.value ] -= 1
+                    # counts_dict[ el.next.value ] -= 1
+                    # counts_dict[ token ] += 1
+
+                    el.value = max_token
+
+                    if el.prev != None:
+                        stack.append(el.prev)
+
                     sequence.remove(el.next)
 
+                    if el.next != None:
+                        stack.append(el)
+
                 el = el.next
+
+            if not combined:
+                print("NOT COMBINED")
+                counts_dict[ max_token ] = 0
 
             iter += 1
 
@@ -117,7 +151,7 @@ class BPE:
         for letter in self.letter2tokens.keys():
             self.letter2tokens[letter].sort(key=len, reverse=True)
 
-    def encode(self, text: str) -> List[int]:
+    def encode(self, text: str):
         sequence = list(text)
         ids = []
 
@@ -129,7 +163,6 @@ class BPE:
                 if ''.join(sequence[i:i + len(token)]) == token:
                     ids.append(self.token2id[token])
                     i += len(token)
-                    break
 
         return ids
 

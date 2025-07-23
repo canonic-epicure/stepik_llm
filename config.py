@@ -1,16 +1,14 @@
-vocab_size = 10000
-
-max_seq_len = 512
-
-batch_size = 64
+vocab_size = 2000
+emb_size = 512
 
 seq_len = 64
+max_seq_len = 512
 
-emb_size = 768
+batch_size = 32
 
-num_heads = 12
+num_heads = 8
 
-head_size = 64
+head_size = 48
 
 num_layers = 12
 
@@ -20,4 +18,4 @@ learning_rate = 0.005
 
 train_ratio = 0.9
 
-num_epoch = 1000
+num_epoch = 100

@@ -2,7 +2,7 @@ vocab_size = 2000
 emb_size = 512
 
 seq_len = 32
-max_seq_len = 256
+max_seq_len = 128
 
 batch_size = 32
 

@@ -10,24 +10,24 @@ from typing import List
 import tqdm
 
 class TokenEmbeddings(nn.Module):
-    def __init__(self, vocab_size: int, emb_size: int):
+    def __init__(self, vocab_size: int, emb_size: int, device='cpu'):
         super().__init__()
         self.vocab_size: int = vocab_size
         self.emb_size: int = emb_size
 
-        self.embeddings = nn.Embedding(vocab_size, emb_size)
+        self.embeddings = nn.Embedding(vocab_size, emb_size).to(device)
 
     def forward(self, x: torch.Tensor):
         return self.embeddings(x)
 
 
 class PositionalEmbeddings(nn.Module):
-    def __init__(self, max_seq_len: int, emb_size: int):
+    def __init__(self, max_seq_len: int, emb_size: int, device='cpu'):
         super().__init__()
         self.max_seq_len: int = max_seq_len
         self.emb_size: int = emb_size
 
-        self.embeddings = nn.Embedding(max_seq_len, emb_size)
+        self.embeddings = nn.Embedding(max_seq_len, emb_size).to(device)
 
     def forward(self, seq_len: int):
         seq = torch.arange(seq_len)
@@ -42,9 +42,9 @@ class HeadAttention(nn.Module):
         self.head_size: int = head_size
         self.max_seq_len = max_seq_len
 
-        self.w_k = nn.Linear(self.emb_size, self.head_size)
-        self.w_q = nn.Linear(self.emb_size, self.head_size)
-        self.w_v = nn.Linear(self.emb_size, self.head_size)
+        self.w_k = nn.Linear(self.emb_size, self.head_size).to(device)
+        self.w_q = nn.Linear(self.emb_size, self.head_size).to(device)
+        self.w_v = nn.Linear(self.emb_size, self.head_size).to(device)
 
         self.tril = torch.tril(torch.ones((self.max_seq_len, self.max_seq_len))).to(device)
 
@@ -71,9 +71,9 @@ class MultiHeadAttention(nn.Module):
             HeadAttention(emb_size, head_size, max_seq_len, device) for _ in range(num_heads)
         ])
 
-        self.out = nn.Linear(head_size * num_heads, emb_size)
+        self.out = nn.Linear(head_size * num_heads, emb_size).to(device)
 
-        self.dropout = nn.Dropout(dropout)
+        self.dropout = nn.Dropout(dropout).to(device)
 
     def forward(self, x: torch.Tensor):
         out = torch.cat([ head.forward(x) for head in self.heads ], dim=2)
@@ -84,14 +84,14 @@ class MultiHeadAttention(nn.Module):
 expand_size = 4
 
 class FeedForward(nn.Module):
-    def __init__(self, emb_size: int, dropout: float = 0.1):
+    def __init__(self, emb_size: int, dropout: float = 0.1, device='cpu'):
         super().__init__()
 
-        self.linear1 = nn.Linear(emb_size, emb_size * expand_size)
-        self.relu = nn.ReLU()
-        self.linear2 = nn.Linear(emb_size * expand_size, emb_size)
+        self.linear1 = nn.Linear(emb_size, emb_size * expand_size).to(device)
+        self.relu = nn.ReLU().to(device)
+        self.linear2 = nn.Linear(emb_size * expand_size, emb_size).to(device)
 
-        self.dropout = nn.Dropout(dropout)
+        self.dropout = nn.Dropout(dropout).to(device)
 
     def forward(self, x: torch.Tensor):
         return self.dropout(
@@ -109,10 +109,10 @@ class Decoder(nn.Module):
 
         self.multi_head = MultiHeadAttention(num_heads, emb_size, head_size, max_seq_len, dropout, device)
 
-        self.feed_forward = FeedForward(emb_size, dropout)
+        self.feed_forward = FeedForward(emb_size, dropout, device=device)
 
-        self.norm1 = nn.LayerNorm(emb_size)
-        self.norm2 = nn.LayerNorm(emb_size)
+        self.norm1 = nn.LayerNorm(emb_size).to(device)
+        self.norm2 = nn.LayerNorm(emb_size).to(device)
 
     def forward(self, x: torch.Tensor):
         out1 = self.norm1(self.multi_head(x) + x)
@@ -150,12 +150,12 @@ class GPT(nn.Module):
         self.dropout = dropout
         self.device = device
 
-        self.embeddings = TokenEmbeddings(vocab_size, emb_size)
-        self.positional_embeddings = PositionalEmbeddings(max_seq_len, emb_size)
+        self.embeddings = TokenEmbeddings(vocab_size, emb_size, device=device)
+        self.positional_embeddings = PositionalEmbeddings(max_seq_len, emb_size, device=device)
 
-        self.dropout = nn.Dropout(dropout)
+        self.dropout = nn.Dropout(dropout).to(device)
         self.decoders = nn.Sequential(*[ Decoder(num_heads, emb_size, head_size, max_seq_len, dropout, device) for _ in range(num_layers) ])
-        self.linear = nn.Linear(emb_size, vocab_size)
+        self.linear = nn.Linear(emb_size, vocab_size).to(device)
 
 
     def forward(self, x: torch.Tensor):

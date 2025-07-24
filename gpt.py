@@ -182,7 +182,8 @@ class GPT(nn.Module):
             'emb_size': self.emb_size,
             'num_heads': self.num_heads,
             'head_size': self.head_size,
-            'num_layers': self.num_layers
+            'num_layers': self.num_layers,
+            'epoch': self.epoch,
         }, path)
 
     @classmethod
@@ -195,6 +196,7 @@ class GPT(nn.Module):
             num_heads=checkpoint['num_heads'],
             head_size=checkpoint['head_size'],
             num_layers=checkpoint['num_layers'],
+            epoch=checkpoint['epoch'],
             device=device
         )
         model.load_state_dict(checkpoint['model_state_dict'])

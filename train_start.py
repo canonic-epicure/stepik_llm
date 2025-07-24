@@ -29,10 +29,10 @@ train_token_ids = input_tokens[:n]
 valid_token_ids = input_tokens[n:]
 
 train_dataset = GetData(data=train_token_ids, seq_len=config.seq_len, device=device)
-train_loader = DataLoader(train_dataset, batch_size=config.batch_size)
+train_loader = DataLoader(train_dataset, batch_size=config.batch_size, shuffle=True)
 
 valid_dataset = GetData(data=valid_token_ids, seq_len=config.seq_len, device=device)
-valid_loader = DataLoader(valid_dataset, batch_size=config.batch_size)
+valid_loader = DataLoader(valid_dataset, batch_size=config.batch_size, shuffle=True)
 
 model = gpt.GPT(config.vocab_size, config.max_seq_len, config.emb_size, config.num_heads, config.head_size, config.num_layers, config.dropout, device=device)
 

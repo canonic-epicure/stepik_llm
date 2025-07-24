@@ -22,7 +22,7 @@ model.device = device
 # total_params = sum(p.numel() for p in model.parameters())
 # print("Total parameters: %.2fM" % (total_params / 1e6,))
 
-input_text = '                                                    Стояла хорошая погода'
+input_text = 'Стояла хорошая погода'
 
 token_ids = torch.tensor(tokenizer.encode(input_text)).to(device)
 

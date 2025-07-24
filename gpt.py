@@ -7,7 +7,7 @@ from torch import \
 from torch.utils.data import \
     DataLoader
 
-from head_attention import \
+from pipeline import \
     TokenEmbeddings, \
     PositionalEmbeddings, \
     Decoder

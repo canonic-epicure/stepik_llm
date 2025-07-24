@@ -5,7 +5,7 @@ import re
 import string
 
 punc = re.compile(f"[{re.escape(string.punctuation)}]")
-space = re.compile(f"\s")
+space = re.compile(r'\s')
 
 class BPE:
     def __init__(self, vocab_size: int):
@@ -146,6 +146,8 @@ class BPE:
 
     def decode(self, token_ids: List[int]):
         str = ''
+
+        token_ids = getattr(token_ids, 'tolist', None) and token_ids.tolist() or token_ids
 
         for id in token_ids:
             str += self.id2token[id]

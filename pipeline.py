@@ -6,9 +6,6 @@ from torch.utils.data import \
     Dataset
 from typing import List
 
-from gpt import \
-    GPT
-
 
 class TokenEmbeddings(nn.Module):
     def __init__(self, vocab_size: int, emb_size: int, device='cpu'):

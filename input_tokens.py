@@ -12,7 +12,7 @@ tokenizer = bpe.BPE.load(f'{ current_dir }/tokenizer.data')
 
 start = time.perf_counter()
 
-tokens = tokenizer.encode(corpus[:1000])
+tokens = tokenizer.encode(corpus[:1000000])
 
 with open('input_tokens.data', 'wb') as f:
     dill.dump(tokens, f)

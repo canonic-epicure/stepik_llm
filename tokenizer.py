@@ -11,7 +11,7 @@ tokenizer = bpe.BPE(config.vocab_size)
 
 start = time.perf_counter()
 
-tokenizer.fit(corpus[:10000])
+tokenizer.fit(corpus[:50000])
 
 end = time.perf_counter()
 

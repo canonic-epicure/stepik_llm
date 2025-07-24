@@ -138,7 +138,7 @@ class GetData(Dataset):
 
 
 class GPT(nn.Module):
-    def __init__(self, vocab_size:int, max_seq_len: int, emb_size: int, num_heads: int, head_size: int, num_layers: int, dropout: float = 0.1, device='cpu'):
+    def __init__(self, vocab_size:int, max_seq_len: int, emb_size: int, num_heads: int, head_size: int, num_layers: int, dropout: float = 0.1, device='cpu', epoch=1):
         super().__init__()
 
         self.vocab_size = vocab_size
@@ -156,6 +156,8 @@ class GPT(nn.Module):
         self.dropout = nn.Dropout(dropout).to(device)
         self.decoders = nn.Sequential(*[ Decoder(num_heads, emb_size, head_size, max_seq_len, dropout, device) for _ in range(num_layers) ])
         self.linear = nn.Linear(emb_size, vocab_size).to(device)
+
+        self.epoch = epoch
 
 
     def forward(self, x: torch.Tensor):
@@ -213,7 +215,7 @@ class GPT(nn.Module):
 
         optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate)
 
-        for e in tqdm.tqdm(range(num_epoch)):
+        for e in tqdm.tqdm(range(self.epoch, self.epoch + num_epoch)):
             self.train()
 
             loss = []
@@ -250,7 +252,7 @@ class GPT(nn.Module):
 
             print(f'train_loss={ train_loss } valid_loss={ torch.mean(torch.tensor(loss)).item() }')
 
-            self.save(f'./models/model_{e}.pt')
+            self.save(f'./models/model_{ str(e).rjust(3, "0") }.pt')
 
     def save(self, path):
         torch.save({

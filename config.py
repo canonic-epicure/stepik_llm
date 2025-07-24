@@ -6,15 +6,15 @@ max_seq_len = 128
 
 batch_size = 32
 
-num_heads = 8
+num_heads = 12
 
-head_size = 48
+head_size = 64
 
-num_layers = 12
+num_layers = 6
 
 dropout = 0.1
 
-learning_rate = 0.005
+learning_rate = 0.00025
 
 train_ratio = 0.9
 

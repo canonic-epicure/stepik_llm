@@ -16,9 +16,10 @@ class BPE:
 
         self.letter2tokens = {}
 
-    def add_token(self, token: str):
-        if token in self.token2id:
+    def add_token(self, token: str, ignoreExisting = False):
+        if not ignoreExisting and token in self.token2id:
             print(f"Token {token} already exists")
+            return
 
         if self.id == self.vocab_size:
             print(f"Vocabulary size is {self.vocab_size}, cannot add token {token}")
@@ -63,6 +64,13 @@ class BPE:
 
         for s in symbols:
             self.add_token(s)
+
+        for char in range(ord('а'), ord('я')):
+            self.add_token(chr(char), True)
+            self.add_token(chr(char).upper(), True)
+
+        for char in string.printable:
+            self.add_token(char, True)
 
         sequence = llist.dllist(text)
 
@@ -123,13 +131,16 @@ class BPE:
 
         i = 0
         while i < len(sequence):
-            tokens = self.letter2tokens[sequence[i]]
+            if sequence[i] in self.letter2tokens:
+                tokens = self.letter2tokens[sequence[i]]
 
-            for token in tokens:
-                if ''.join(sequence[i:i + len(token)]) == token:
-                    ids.append(self.token2id[token])
-                    i += len(token)
-                    break
+                for token in tokens:
+                    if ''.join(sequence[i:i + len(token)]) == token:
+                        ids.append(self.token2id[token])
+                        i += len(token)
+                        break
+            else:
+                i += 1
 
         return ids
 

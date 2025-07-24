@@ -159,6 +159,7 @@ class GPT(nn.Module):
 
                     print(f'\rvalid step={ step } done, from {len(valid_loader)}, time={ step_time }s, loss={ valid_loss.item() }, time remain={ (len(valid_loader) - step) * (total_time / step) }s', end='', flush=True)
 
+            print()
             print(f'train_loss={ train_loss } valid_loss={ torch.mean(torch.tensor(loss)).item() }')
 
             epoch_end = time.perf_counter()

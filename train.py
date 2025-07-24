@@ -36,7 +36,7 @@ valid_dataset = GetData(data=valid_token_ids, seq_len=config.seq_len, device=dev
 valid_loader = DataLoader(valid_dataset, batch_size=config.batch_size) # , shuffle=True ??
 
 if False:
-    model = gpt.GPT(config.vocab_size, config.max_seq_len, config.emb_size, config.num_heads, config.head_size, config.num_layers, config.dropout, device=device)
+    model: gpt.GPT = gpt.GPT(config.vocab_size, config.max_seq_len, config.emb_size, config.num_heads, config.head_size, config.num_layers, config.dropout, device=device)
 
     # model.tokenizer = tokenizer
 else:
@@ -52,10 +52,10 @@ else:
 
     epochs.sort(reverse=True)
 
-    model = gpt.GPT.load(f'{ current_dir }/models/model_{ epochs[ 0] }.pt', device=device)
+    model = gpt.GPT.load(f'{ current_dir }/models/model_{ epochs[ 0 ] }.pt', device=device)
     # model.device = device
     model.epoch = int(epochs[ 0 ]) + 1
 
-model = model.compile()
+model: gpt.GPT = model.compile()
 
 model.fit(train_loader, valid_loader, config.num_epoch, config.learning_rate)

@@ -5,7 +5,7 @@ import \
 import \
     config
 import \
-    head_attention as mod
+    gpt
 
 import torch
 
@@ -15,7 +15,7 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 
 tokenizer = bpe.BPE.load(f'{ current_dir }/tokenizer.data')
 
-model = mod.GPT.load(f'{ current_dir }/models/model_16.pt', device=device)
+model = gpt.GPT.load(f'{ current_dir }/models/model_16.pt', device=device)
 model.device = device
 
 

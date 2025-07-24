@@ -7,8 +7,10 @@ from torch.utils.data import \
 import bpe as bpe
 import config
 import time
-import head_attention as mod
-from head_attention import \
+
+import \
+    gpt
+from pipeline import \
     GetData
 
 device = 'cuda'
@@ -32,6 +34,8 @@ train_loader = DataLoader(train_dataset, batch_size=config.batch_size)
 valid_dataset = GetData(data=valid_token_ids, seq_len=config.seq_len, device=device)
 valid_loader = DataLoader(valid_dataset, batch_size=config.batch_size)
 
-model = mod.GPT(config.vocab_size, config.max_seq_len, config.emb_size, config.num_heads, config.head_size, config.num_layers, config.dropout, device=device)
+model = gpt.GPT(config.vocab_size, config.max_seq_len, config.emb_size, config.num_heads, config.head_size, config.num_layers, config.dropout, device=device)
+
+model.tokenizer = tokenizer
 
 model.fit(train_loader, valid_loader, config.num_epoch, config.learning_rate)

@@ -8,8 +8,10 @@ from torch.utils.data import \
 import bpe as bpe
 import config
 import time
-import head_attention as mod
-from head_attention import \
+
+import \
+    gpt
+from pipeline import \
     GetData
 
 device = 'cuda'
@@ -44,7 +46,7 @@ if len(epochs) == 0:
 
 epochs.sort(reverse=True)
 
-model = mod.GPT.load(f'{ current_dir }/models/model_{ epochs[ 0 ] }.pt', device=device)
+model = gpt.GPT.load(f'{ current_dir }/models/model_{ epochs[ 0] }.pt', device=device)
 model.device = device
 model.epoch = int(epochs[ 0 ]) + 1
 

@@ -197,7 +197,7 @@ class GPT(nn.Module):
             num_heads=checkpoint['num_heads'],
             head_size=checkpoint['head_size'],
             num_layers=checkpoint['num_layers'],
-            epoch=checkpoint['epoch'],
+            epoch=getattr(checkpoint, 'epoch', None) or 1,
             device=device
         )
         model.load_state_dict(checkpoint['model_state_dict'])

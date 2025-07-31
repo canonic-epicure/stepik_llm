@@ -56,6 +56,6 @@ else:
     # model.device = device
     model.epoch = int(epochs[ 0 ]) + 1
 
-model: gpt.GPT = model.compile()
+# model.compile()
 
 model.fit(train_loader, valid_loader, config.num_epoch, config.learning_rate)

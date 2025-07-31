@@ -30,7 +30,7 @@ epochs.sort(reverse=True)
 
 model = gpt.GPT.load(f'{ current_dir }/models/model_{ epochs[ 0 ] }.pt', device=device)
 
-model = model.compile()
+# model = model.compile()
 
 # total_params = sum(p.numel() for p in model.parameters())
 # print("Total parameters: %.2fM" % (total_params / 1e6,))
@@ -38,10 +38,10 @@ model = model.compile()
 input_text = 'Стояла хорошая погода'
 
 token_ids = tokenizer.encode(input_text)
-token_ids.extend([0] * (-len(token_ids) % config.seq_len))
-token_ids = torch.tensor(token_ids).to(device)
+# token_ids.extend([0] * (-len(token_ids) % config.seq_len))
+token_ids = torch.tensor([ token_ids ]).to(device)
 
-output_text = model.generate(token_ids.reshape(config.batch_size, -1), config.max_seq_len, True, 0.9, 5, None)
+output_text = model.generate(token_ids, config.max_seq_len, True, 0.9, 5, None)
 
 decoded = tokenizer.decode(output_text.reshape(-1).tolist())
 
